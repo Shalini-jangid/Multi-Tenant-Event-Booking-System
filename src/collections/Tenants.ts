@@ -9,11 +9,15 @@ export const Tenants: CollectionConfig = {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
 
+      // safely extract tenantId
+      const tenantId =
+        typeof user?.tenant === 'object'
+          ? user?.tenant?.id?.toString() || user?.tenant?._id?.toString()
+          : user?.tenant?.toString()
+
       return {
         id: {
-          equals: typeof user?.tenant === 'object'
-            ? user.tenant.id?.toString() || user.tenant._id?.toString()
-            : user?.tenant?.toString(),
+          equals: tenantId || '',
         },
       }
     },
