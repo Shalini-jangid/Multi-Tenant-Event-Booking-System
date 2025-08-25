@@ -12,7 +12,9 @@ export const Users: CollectionConfig = {
 
       return {
         tenant: {
-          equals: user?.tenant,
+          equals: typeof user?.tenant === 'object'
+            ? user?.tenant.id?.toString()
+            : user?.tenant?.toString(),
         },
       }
     },
@@ -24,7 +26,9 @@ export const Users: CollectionConfig = {
 
       return {
         tenant: {
-          equals: user?.tenant,
+          equals: typeof user?.tenant === 'object'
+            ? user?.tenant.id?.toString()
+            : user?.tenant?.toString(),
         },
       }
     },
@@ -34,11 +38,19 @@ export const Users: CollectionConfig = {
     beforeChange: [
       ({ req, data }) => {
         if (req.user && !data.tenant) {
-          // ✅ Make sure we assign only the tenant ID
-          data.tenant = typeof req.user.tenant === 'object'
-            ? req.user.tenant.id || req.user.tenant._id
-            : req.user.tenant
+          // ✅ Always store tenant as ID string only
+          if (typeof req.user.tenant === 'object') {
+            data.tenant = req.user.tenant.id?.toString() || req.user.tenant._id?.toString()
+          } else {
+            data.tenant = req.user.tenant?.toString()
+          }
         }
+
+        // 🔒 Prevent privilege escalation: only admins can assign admin role
+        if (req.user?.role !== 'admin' && data.role === 'admin') {
+          data.role = 'attendee'
+        }
+
         return data
       },
     ],

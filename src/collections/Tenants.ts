@@ -8,10 +8,12 @@ export const Tenants: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
-      
+
       return {
         id: {
-          equals: user?.tenant,
+          equals: typeof user?.tenant === 'object'
+            ? user.tenant.id?.toString() || user.tenant._id?.toString()
+            : user?.tenant?.toString(),
         },
       }
     },
