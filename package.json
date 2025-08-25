@@ -15,7 +15,8 @@
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --no-experimental-strip-types\" pnpm exec playwright test",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
-    "vercel-build": "pnpm install --no-frozen-lockfile && pnpm run build"
+    "vercel-build": "pnpm run build"
+
   },
   "dependencies": {
     "@payloadcms/db-mongodb": "^3.53.0",
