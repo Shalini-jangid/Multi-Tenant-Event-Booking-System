@@ -1,13 +1,23 @@
-import { Endpoint } from 'payload'
+import { Endpoint, PayloadRequest } from 'payload'
 
 export const dashboardEndpoint: Endpoint = {
   path: '/dashboard',
   method: 'get',
-  handler: async (req, res) => {
+  handler: async (req: PayloadRequest) => {
     const { user, payload } = req
 
     if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!user.tenant) {
+      return new Response(
+        JSON.stringify({ error: 'User tenant not found' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     try {
@@ -28,7 +38,7 @@ export const dashboardEndpoint: Endpoint = {
       // Get booking counts for each event
       const eventsWithCounts = await Promise.all(
         events.docs.map(async (event: any) => {
-          const [confirmed, waitlisted, canceled] = await Promise.all([
+          const [confirmed, pending, cancelled] = await Promise.all([
             payload.find({
               collection: 'bookings',
               where: {
@@ -40,35 +50,35 @@ export const dashboardEndpoint: Endpoint = {
               collection: 'bookings',
               where: {
                 event: { equals: event.id },
-                status: { equals: 'waitlisted' },
+                status: { equals: 'pending' },
               },
             }),
             payload.find({
               collection: 'bookings',
               where: {
                 event: { equals: event.id },
-                status: { equals: 'canceled' },
+                status: { equals: 'cancelled' },
               },
             }),
           ])
 
           const confirmedCount = confirmed.totalDocs
-          const waitlistedCount = waitlisted.totalDocs
-          const canceledCount = canceled.totalDocs
+          const pendingCount = pending.totalDocs
+          const cancelledCount = cancelled.totalDocs
           const percentageFilled = (confirmedCount / event.capacity) * 100
 
           return {
             ...event,
             confirmedCount,
-            waitlistedCount,
-            canceledCount,
+            pendingCount,
+            cancelledCount,
             percentageFilled: Math.round(percentageFilled * 100) / 100,
           }
         })
       )
 
       // Get summary analytics
-      const [totalConfirmed, totalWaitlisted, totalCanceled] = await Promise.all([
+      const [totalConfirmed, totalPending, totalCancelled] = await Promise.all([
         payload.find({
           collection: 'bookings',
           where: {
@@ -80,14 +90,14 @@ export const dashboardEndpoint: Endpoint = {
           collection: 'bookings',
           where: {
             tenant: { equals: user.tenant },
-            status: { equals: 'waitlisted' },
+            status: { equals: 'pending' },
           },
         }),
         payload.find({
           collection: 'bookings',
           where: {
             tenant: { equals: user.tenant },
-            status: { equals: 'canceled' },
+            status: { equals: 'cancelled' },
           },
         }),
       ])
@@ -101,14 +111,16 @@ export const dashboardEndpoint: Endpoint = {
           },
         },
         populate: {
-          user: {
+          users: {
             name: true,
             email: true,
           },
-          event: {
+          events: {
             title: true,
           },
-          booking: true,
+          bookings: {
+            status: true,
+          },
         },
         sort: '-createdAt',
         limit: 5,
@@ -119,16 +131,22 @@ export const dashboardEndpoint: Endpoint = {
         summary: {
           totalEvents: events.totalDocs,
           totalConfirmedBookings: totalConfirmed.totalDocs,
-          totalWaitlistedBookings: totalWaitlisted.totalDocs,
-          totalCanceledBookings: totalCanceled.totalDocs,
+          totalPendingBookings: totalPending.totalDocs,
+          totalCancelledBookings: totalCancelled.totalDocs,
         },
         recentActivity: recentActivity.docs,
       }
 
-      return res.status(200).json(dashboardData)
+      return new Response(
+        JSON.stringify(dashboardData),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      return res.status(500).json({ error: 'Internal server error' })
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
   },
 }

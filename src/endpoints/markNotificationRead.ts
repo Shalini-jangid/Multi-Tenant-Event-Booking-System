@@ -1,18 +1,48 @@
-import { Endpoint } from 'payload'
+import { Endpoint, PayloadRequest } from 'payload'
+
+interface MarkNotificationReadBody {
+  id: string
+}
 
 export const markNotificationReadEndpoint: Endpoint = {
-  path: '/notifications/:id/read',
+  path: '/notifications/read',
   method: 'post',
-  handler: async (req, res) => {
+  handler: async (req: PayloadRequest) => {
     const { user, payload } = req
-    const { id } = req.params
+    
+    // Parse the request body to get the notification ID
+    let body: MarkNotificationReadBody
+    try {
+      const bodyText = await new Response(req.body).text()
+      body = JSON.parse(bodyText)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { id } = body
 
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!user.tenant) {
+      return new Response(
+        JSON.stringify({ error: 'User tenant not found' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!id) {
-      return res.status(400).json({ error: 'Notification ID is required' })
+      return new Response(
+        JSON.stringify({ error: 'Notification ID is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     try {
@@ -23,7 +53,10 @@ export const markNotificationReadEndpoint: Endpoint = {
       })
 
       if (notification.user !== user.id) {
-        return res.status(403).json({ error: 'Access denied' })
+        return new Response(
+          JSON.stringify({ error: 'Access denied' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
       }
 
       // Mark as read
@@ -35,13 +68,19 @@ export const markNotificationReadEndpoint: Endpoint = {
         },
       })
 
-      return res.status(200).json({
-        message: 'Notification marked as read',
-        notification: updatedNotification,
-      })
+      return new Response(
+        JSON.stringify({
+          message: 'Notification marked as read',
+          notification: updatedNotification,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     } catch (error) {
       console.error('Error marking notification as read:', error)
-      return res.status(500).json({ error: 'Internal server error' })
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
   },
 }

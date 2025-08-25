@@ -1,13 +1,23 @@
-import { Endpoint } from 'payload'
+import { Endpoint, PayloadRequest } from 'payload'
 
 export const myNotificationsEndpoint: Endpoint = {
   path: '/my-notifications',
   method: 'get',
-  handler: async (req, res) => {
+  handler: async (req: PayloadRequest) => {
     const { user, payload } = req
 
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!user.tenant) {
+      return new Response(
+        JSON.stringify({ error: 'User tenant not found' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     try {
@@ -22,24 +32,28 @@ export const myNotificationsEndpoint: Endpoint = {
           },
         },
         populate: {
-          booking: {
-            event: {
-              title: true,
-            },
+          bookings: {
+            event: true,
           },
         },
         sort: '-createdAt',
       })
 
-      return res.status(200).json({
-        notifications: notifications.docs,
-        totalDocs: notifications.totalDocs,
-        page: notifications.page,
-        totalPages: notifications.totalPages,
-      })
+      return new Response(
+        JSON.stringify({
+          notifications: notifications.docs,
+          totalDocs: notifications.totalDocs,
+          page: notifications.page,
+          totalPages: notifications.totalPages,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     } catch (error) {
       console.error('Error fetching notifications:', error)
-      return res.status(500).json({ error: 'Internal server error' })
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
   },
 }

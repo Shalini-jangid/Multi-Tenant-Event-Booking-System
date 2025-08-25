@@ -1,19 +1,49 @@
-import { Endpoint } from 'payload'
+import { Endpoint, PayloadRequest } from 'payload'
 import { promoteOldestWaitlisted, createNotification, createBookingLog } from '../utils/booking-helpers'
+
+interface CancelBookingBody {
+  bookingId: string
+}
 
 export const cancelBookingEndpoint: Endpoint = {
   path: '/cancel-booking',
   method: 'post',
-  handler: async (req, res) => {
+  handler: async (req: PayloadRequest) => {
     const { user, payload } = req
-    const { bookingId } = req.body
+    
+    // Parse the request body
+    let body: CancelBookingBody
+    try {
+      const bodyText = await new Response(req.body).text()
+      body = JSON.parse(bodyText)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { bookingId } = body
 
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!user.tenant) {
+      return new Response(
+        JSON.stringify({ error: 'User tenant not found' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!bookingId) {
-      return res.status(400).json({ error: 'Booking ID is required' })
+      return new Response(
+        JSON.stringify({ error: 'Booking ID is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     try {
@@ -25,19 +55,25 @@ export const cancelBookingEndpoint: Endpoint = {
 
       // Check ownership
       if (booking.user !== user.id && user.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied' })
+        return new Response(
+          JSON.stringify({ error: 'Access denied' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
       }
 
-      if (booking.status === 'canceled') {
-        return res.status(400).json({ error: 'Booking is already canceled' })
+      if (booking.status === 'cancelled') {
+        return new Response(
+          JSON.stringify({ error: 'Booking is already cancelled' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
       }
 
-      // Update booking status to canceled
+      // Update booking status to cancelled
       await payload.update({
         collection: 'bookings',
         id: bookingId,
         data: {
-          status: 'canceled',
+          status: 'cancelled',
         },
       })
 
@@ -46,13 +82,19 @@ export const cancelBookingEndpoint: Endpoint = {
         await promoteOldestWaitlisted(payload, booking.event as string, user.tenant as string)
       }
 
-      return res.status(200).json({
-        message: 'Booking canceled successfully',
-        booking: { ...booking, status: 'canceled' },
-      })
+      return new Response(
+        JSON.stringify({
+          message: 'Booking cancelled successfully',
+          booking: { ...booking, status: 'cancelled' },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     } catch (error) {
-      console.error('Error canceling booking:', error)
-      return res.status(500).json({ error: 'Internal server error' })
+      console.error('Error cancelling booking:', error)
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
   },
 }
