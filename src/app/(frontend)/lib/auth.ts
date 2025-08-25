@@ -38,10 +38,10 @@ class AuthService {
       })
 
       const { user, token, exp } = response.data
-      
+
       this.token = token
       this.user = user
-      
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(user))
@@ -55,15 +55,19 @@ class AuthService {
 
   async logout() {
     try {
-      await axios.post(`${API_BASE}/api/users/logout`, {}, {
-        headers: this.getAuthHeaders(),
-      })
+      await axios.post(
+        `${API_BASE}/api/users/logout`,
+        {},
+        {
+          headers: this.getAuthHeaders(),
+        }
+      )
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
       this.token = null
       this.user = null
-      
+
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
@@ -90,14 +94,27 @@ class AuthService {
 
 export const authService = new AuthService()
 
-// Axios interceptor to add auth headers
+// ✅ Axios interceptor to add auth headers (fixed for axios v1+)
 axios.interceptors.request.use((config) => {
   const headers = authService.getAuthHeaders()
-  config.headers = { ...config.headers, ...headers }
+
+  if (config.headers && typeof (config.headers as any).set === 'function') {
+    // AxiosHeaders instance → use .set()
+    Object.entries(headers).forEach(([key, value]) => {
+      ;(config.headers as any).set(key, value)
+    })
+  } else {
+    // Fallback if headers is a plain object
+    config.headers = {
+      ...(config.headers || {}),
+      ...headers,
+    } as any
+  }
+
   return config
 })
 
-// Handle auth errors
+// Handle auth errors globally
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
