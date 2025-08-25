@@ -9,13 +9,11 @@ export const Users: CollectionConfig = {
   access: {
     read: ({ req: { user } }: AccessArgs) => {
       if (user?.role === 'admin') return true
-
-      // Deny if tenant is missing
       if (!user?.tenant) return false
 
       const tenantId =
         typeof user.tenant === 'object'
-          ? user.tenant.id?.toString() ?? user.tenant._id?.toString() ?? null
+          ? user.tenant.id?.toString() ?? null
           : user.tenant?.toString() ?? null
 
       return {
@@ -24,17 +22,15 @@ export const Users: CollectionConfig = {
         },
       }
     },
-    create: ({ req: { user } }: AccessArgs) => {
-      return user?.role === 'admin' || user?.role === 'organizer'
-    },
+    create: ({ req: { user } }: AccessArgs) =>
+      user?.role === 'admin' || user?.role === 'organizer',
     update: ({ req: { user } }: AccessArgs) => {
       if (user?.role === 'admin') return true
-
       if (!user?.tenant) return false
 
       const tenantId =
         typeof user.tenant === 'object'
-          ? user.tenant.id?.toString() ?? user.tenant._id?.toString() ?? null
+          ? user.tenant.id?.toString() ?? null
           : user.tenant?.toString() ?? null
 
       return {
@@ -52,7 +48,7 @@ export const Users: CollectionConfig = {
           if (req.user.tenant) {
             data.tenant =
               typeof req.user.tenant === 'object'
-                ? req.user.tenant.id?.toString() ?? req.user.tenant._id?.toString()
+                ? req.user.tenant.id?.toString()
                 : req.user.tenant.toString()
           } else {
             data.tenant = undefined
