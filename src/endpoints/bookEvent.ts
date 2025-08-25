@@ -1,56 +1,83 @@
-import { Endpoint } from 'payload'
-import { getEventCapacityInfo, createNotification, createBookingLog } from '../utils/booking-helpers'
+import { Endpoint, PayloadRequest } from 'payload'
+import { getEventCapacityInfo } from '../utils/booking-helpers'
+
+interface BookEventBody {
+  eventId: string
+}
 
 export const bookEventEndpoint: Endpoint = {
   path: '/book-event',
   method: 'post',
-  handler: async (req, res) => {
+  handler: async (req: PayloadRequest) => {
     const { user, payload } = req
-    const { eventId } = req.body
+    
+    // Parse the request body
+    let body: BookEventBody
+    try {
+      const bodyText = await new Response(req.body).text()
+      body = JSON.parse(bodyText)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { eventId } = body
 
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!user.tenant) {
+      return new Response(
+        JSON.stringify({ error: 'User tenant not found' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!eventId) {
-      return res.status(400).json({ error: 'Event ID is required' })
+      return new Response(
+        JSON.stringify({ error: 'Event ID is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     try {
-      // Check if user already has a booking for this event
       const existingBooking = await payload.find({
         collection: 'bookings',
         where: {
-          event: {
-            equals: eventId,
-          },
-          user: {
-            equals: user.id,
-          },
-          status: {
-            not_equals: 'canceled',
-          },
+          event: { equals: eventId },
+          user: { equals: user.id },
+          status: { not_equals: 'canceled' },
         },
       })
 
       if (existingBooking.totalDocs > 0) {
-        return res.status(400).json({ error: 'You already have a booking for this event' })
+        return new Response(
+          JSON.stringify({ error: 'You already have a booking for this event' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
       }
 
-      // Get event and capacity info
       const event = await payload.findByID({
         collection: 'events',
         id: eventId,
       })
 
-      if (event.tenant !== user.tenant) {
-        return res.status(403).json({ error: 'Access denied' })
+      if (!event || event.tenant !== user.tenant) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
       }
 
       const capacityInfo = await getEventCapacityInfo(payload, eventId)
-      const status = capacityInfo.isFull ? 'waitlisted' : 'confirmed'
+      const status = capacityInfo.isFull ? 'pending' : 'confirmed'
 
-      // Create booking
       const booking = await payload.create({
         collection: 'bookings',
         data: {
@@ -61,14 +88,20 @@ export const bookEventEndpoint: Endpoint = {
         },
       })
 
-      return res.status(201).json({
-        message: `Booking ${status} successfully`,
-        booking,
-        status,
-      })
+      return new Response(
+        JSON.stringify({
+          message: `Booking ${status} successfully`,
+          booking,
+          status,
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } }
+      )
     } catch (error) {
       console.error('Error booking event:', error)
-      return res.status(500).json({ error: 'Internal server error' })
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
   },
 }
