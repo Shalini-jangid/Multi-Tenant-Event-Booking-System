@@ -16,13 +16,13 @@
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --no-experimental-strip-types\" pnpm exec playwright test",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "vercel-build": "npm run build"
-
   },
   "dependencies": {
     "@payloadcms/db-mongodb": "^3.53.0",
     "@payloadcms/db-postgres": "^3.53.0",
     "@payloadcms/next": "^3.53.0",
     "@payloadcms/payload-cloud": "^3.53.0",
+    "@payloadcms/richtext-lexical": "^3.53.0",
     "@payloadcms/ui": "^3.53.0",
     "axios": "^1.7.0",
     "bcrypt": "^6.0.0",
