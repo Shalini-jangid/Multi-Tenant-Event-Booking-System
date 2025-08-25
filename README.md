@@ -73,9 +73,9 @@ npm run seed
 
 # Seeded users:
 
-* Tenant A Organizer → user@example.com / user
+* Tenant A Organizer → user@gamil.com / user
 
-* Admin User → shalinijangid81gmail.com / Shalu@123
+* Admin User → user@example.com / user
 
 ---
 

@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload'
+import { CollectionConfig, AccessArgs } from 'payload'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -7,46 +7,59 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
   },
   access: {
-    read: ({ req: { user } }) => {
+    read: ({ req: { user } }: AccessArgs) => {
       if (user?.role === 'admin') return true
+
+      // Deny if tenant is missing
+      if (!user?.tenant) return false
+
+      const tenantId =
+        typeof user.tenant === 'object'
+          ? user.tenant.id?.toString() ?? user.tenant._id?.toString() ?? null
+          : user.tenant?.toString() ?? null
 
       return {
         tenant: {
-          equals: typeof user?.tenant === 'object'
-            ? user?.tenant.id?.toString()
-            : user?.tenant?.toString(),
+          equals: tenantId,
         },
       }
     },
-    create: ({ req: { user } }) => {
+    create: ({ req: { user } }: AccessArgs) => {
       return user?.role === 'admin' || user?.role === 'organizer'
     },
-    update: ({ req: { user } }) => {
+    update: ({ req: { user } }: AccessArgs) => {
       if (user?.role === 'admin') return true
+
+      if (!user?.tenant) return false
+
+      const tenantId =
+        typeof user.tenant === 'object'
+          ? user.tenant.id?.toString() ?? user.tenant._id?.toString() ?? null
+          : user.tenant?.toString() ?? null
 
       return {
         tenant: {
-          equals: typeof user?.tenant === 'object'
-            ? user?.tenant.id?.toString()
-            : user?.tenant?.toString(),
+          equals: tenantId,
         },
       }
     },
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    delete: ({ req: { user } }: AccessArgs) => user?.role === 'admin',
   },
   hooks: {
     beforeChange: [
       ({ req, data }) => {
         if (req.user && !data.tenant) {
-          // ✅ Always store tenant as ID string only
-          if (typeof req.user.tenant === 'object') {
-            data.tenant = req.user.tenant.id?.toString() || req.user.tenant._id?.toString()
+          if (req.user.tenant) {
+            data.tenant =
+              typeof req.user.tenant === 'object'
+                ? req.user.tenant.id?.toString() ?? req.user.tenant._id?.toString()
+                : req.user.tenant.toString()
           } else {
-            data.tenant = req.user.tenant?.toString()
+            data.tenant = undefined
           }
         }
 
-        // 🔒 Prevent privilege escalation: only admins can assign admin role
+        // Prevent privilege escalation
         if (req.user?.role !== 'admin' && data.role === 'admin') {
           data.role = 'attendee'
         }
@@ -67,18 +80,9 @@ export const Users: CollectionConfig = {
       required: true,
       defaultValue: 'attendee',
       options: [
-        {
-          label: 'Attendee',
-          value: 'attendee',
-        },
-        {
-          label: 'Organizer',
-          value: 'organizer',
-        },
-        {
-          label: 'Admin',
-          value: 'admin',
-        },
+        { label: 'Attendee', value: 'attendee' },
+        { label: 'Organizer', value: 'organizer' },
+        { label: 'Admin', value: 'admin' },
       ],
     },
     {
@@ -87,8 +91,7 @@ export const Users: CollectionConfig = {
       relationTo: 'tenants',
       required: true,
       admin: {
-        // ✅ Only show tenant field in admin panel if user is an Admin
-        condition: (data, siblingData, { user }) => user?.role === 'admin',
+        condition: (_, __, { user }) => user?.role === 'admin',
       },
     },
   ],

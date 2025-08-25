@@ -202,10 +202,10 @@ export interface Event {
  */
 export interface Booking {
   id: string;
-  event: string | Event;
+  tenant: string | Tenant;
   user: string | User;
-  status: 'confirmed' | 'waitlisted' | 'canceled';
-  tenant?: (string | null) | Tenant;
+  event: string | Event;
+  status?: ('pending' | 'confirmed' | 'cancelled') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -390,10 +390,10 @@ export interface EventsSelect<T extends boolean = true> {
  * via the `definition` "bookings_select".
  */
 export interface BookingsSelect<T extends boolean = true> {
-  event?: T;
-  user?: T;
-  status?: T;
   tenant?: T;
+  user?: T;
+  event?: T;
+  status?: T;
   updatedAt?: T;
   createdAt?: T;
 }

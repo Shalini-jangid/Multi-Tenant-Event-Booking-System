@@ -12,7 +12,7 @@ export const Tenants: CollectionConfig = {
       // safely extract tenantId
       const tenantId =
         typeof user?.tenant === 'object'
-          ? user?.tenant?.id?.toString() || user?.tenant?._id?.toString()
+          ? user?.tenant?.id?.toString()
           : user?.tenant?.toString()
 
       return {
