@@ -5,10 +5,7 @@ dotenv.config()
 
 async function seed() {
   try {
-    await payload.init({
-      secret: process.env.PAYLOAD_SECRET,
-      local: true,
-    })
+    await payload.init({})
 
     console.log('🌱 Starting seed process...')
 
@@ -126,19 +123,12 @@ async function seed() {
       collection: 'events',
       data: {
         title: 'React Advanced Workshop',
-        description: [
-          {
-            children: [
-              {
-                text: 'Learn advanced React patterns and best practices in this hands-on workshop.',
-              },
-            ],
-          },
-        ],
+        description: 'Learn advanced React patterns and best practices in this hands-on workshop.',
         date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
         capacity: 2, // Small capacity to test waitlist
         organizer: organizer1.id,
         tenant: tenant1.id,
+        status: 'published',
       },
     })
 
@@ -146,19 +136,12 @@ async function seed() {
       collection: 'events',
       data: {
         title: 'Node.js Best Practices',
-        description: [
-          {
-            children: [
-              {
-                text: 'Deep dive into Node.js performance optimization and security.',
-              },
-            ],
-          },
-        ],
+        description: 'Deep dive into Node.js performance optimization and security.',
         date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks from now
         capacity: 5,
         organizer: organizer1.id,
         tenant: tenant1.id,
+        status: 'published',
       },
     })
 
@@ -167,19 +150,12 @@ async function seed() {
       collection: 'events',
       data: {
         title: 'Design Thinking Workshop',
-        description: [
-          {
-            children: [
-              {
-                text: 'Learn the fundamentals of design thinking methodology.',
-              },
-            ],
-          },
-        ],
+        description: 'Learn the fundamentals of design thinking methodology.',
         date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days from now
         capacity: 3,
         organizer: organizer2.id,
         tenant: tenant2.id,
+        status: 'published',
       },
     })
 
@@ -187,19 +163,12 @@ async function seed() {
       collection: 'events',
       data: {
         title: 'Creative Writing Masterclass',
-        description: [
-          {
-            children: [
-              {
-                text: 'Enhance your creative writing skills with professional techniques.',
-              },
-            ],
-          },
-        ],
+        description: 'Enhance your creative writing skills with professional techniques.',
         date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(), // 3 weeks from now
         capacity: 4,
         organizer: organizer2.id,
         tenant: tenant2.id,
+        status: 'published',
       },
     })
 
@@ -226,13 +195,13 @@ async function seed() {
       },
     })
 
-    // This booking should be waitlisted since capacity is 2
+    // This booking should be pending (waitlisted) since capacity is 2
     await payload.create({
       collection: 'bookings',
       data: {
         event: event1_1.id,
         user: attendee1_3.id,
-        status: 'waitlisted',
+        status: 'pending', // Changed from 'waitlisted' to 'pending'
         tenant: tenant1.id,
       },
     })

@@ -73,8 +73,8 @@ npm run seed
 
 # Seeded users:
 
-* Tenant A Organizer → user@gamil.com / user
-
+* Tenant Organizer → user@gamil.com / user
+* Attendee → user1@example.com / user 
 * Admin User → user@example.com / user
 
 ---
