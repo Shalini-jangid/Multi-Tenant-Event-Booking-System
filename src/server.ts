@@ -1,6 +1,7 @@
 import express from 'express'
 import payload from 'payload'
 import dotenv from 'dotenv'
+import payloadConfig from './payload.config' // import the actual config object
 
 dotenv.config()
 
@@ -12,18 +13,16 @@ app.get('/', (_, res) => {
 })
 
 const start = async () => {
-  // Initialize Payload
+  // Initialize Payload with actual config object
   await payload.init({
-    secret: process.env.PAYLOAD_SECRET,
-    express: app,
+    config: payloadConfig,
     onInit: async () => {
       payload.logger.info(`Payload Admin URL: ${payload.getAdminURL()}`)
     },
   })
 
   const PORT = process.env.PORT || 3000
-
-  app.listen(PORT, async () => {
+  app.listen(PORT, () => {
     payload.logger.info(`Server listening on port ${PORT}`)
   })
 }

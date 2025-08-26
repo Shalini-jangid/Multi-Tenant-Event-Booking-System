@@ -1,9 +1,14 @@
-import { Payload } from 'payload'
+import payload from 'payload'
+import type { Bookinglog, Notification } from '../payload-types' // adjust path if needed
+
+// Use exact enum types from generated Payload types
+export type NotificationType = Notification['type']
+export type BookingActionType = Bookinglog['action']
 
 export interface NotificationData {
   user: string
   booking: string
-  type: string
+  type: NotificationType
   tenant: string
 }
 
@@ -11,51 +16,54 @@ export interface BookingLogData {
   booking: string
   event: string
   user: string
-  action: string
+  action: BookingActionType
   note: string
   tenant: string
 }
 
-export async function createNotification(payload: Payload, data: NotificationData) {
+// Create a notification
+export async function createNotification(payloadInstance: typeof payload, data: NotificationData) {
   const { user, booking, type, tenant } = data
-  
-  const titles = {
+
+  const titles: Record<NotificationType, string> = {
     booking_confirmed: 'Booking Confirmed',
     waitlisted: 'Added to Waitlist',
     waitlist_promoted: 'Promoted from Waitlist',
     booking_canceled: 'Booking Canceled',
   }
-  
-  const messages = {
+
+  const messages: Record<NotificationType, string> = {
     booking_confirmed: 'Your booking has been confirmed!',
     waitlisted: 'The event is full. You have been added to the waitlist.',
     waitlist_promoted: 'Great news! You have been promoted from the waitlist and your booking is now confirmed.',
     booking_canceled: 'Your booking has been canceled.',
   }
-  
-  await payload.create({
+
+  await payloadInstance.create({
     collection: 'notifications',
     data: {
       user,
       booking,
       type,
-      title: titles[type as keyof typeof titles] || 'Notification',
-      message: messages[type as keyof typeof messages] || 'You have a new notification.',
+      title: titles[type],
+      message: messages[type],
       read: false,
       tenant,
     },
   })
 }
 
-export async function createBookingLog(payload: Payload, data: BookingLogData) {
-  await payload.create({
+// Create a booking log
+export async function createBookingLog(payloadInstance: typeof payload, data: BookingLogData) {
+  await payloadInstance.create({
     collection: 'bookinglogs',
     data,
   })
 }
 
-export async function getEventCapacityInfo(payload: Payload, eventId: string) {
-  const bookings = await payload.find({
+// Get event capacity info
+export async function getEventCapacityInfo(payloadInstance: typeof payload, eventId: string) {
+  const bookings = await payloadInstance.find({
     collection: 'bookings',
     where: {
       event: {
@@ -66,21 +74,24 @@ export async function getEventCapacityInfo(payload: Payload, eventId: string) {
       },
     },
   })
-  
-  const event = await payload.findByID({
+
+  const event = await payloadInstance.findByID({
     collection: 'events',
     id: eventId,
   })
-  
+
+  const capacity = event?.capacity ?? 0
+
   return {
     confirmedCount: bookings.totalDocs,
-    capacity: event.capacity,
-    isFull: bookings.totalDocs >= event.capacity,
+    capacity,
+    isFull: bookings.totalDocs >= capacity,
   }
 }
 
-export async function promoteOldestWaitlisted(payload: Payload, eventId: string, tenantId: string) {
-  const waitlistedBookings = await payload.find({
+// Promote oldest waitlisted booking
+export async function promoteOldestWaitlisted(payloadInstance: typeof payload, eventId: string, tenantId: string) {
+  const waitlistedBookings = await payloadInstance.find({
     collection: 'bookings',
     where: {
       event: {
@@ -96,28 +107,26 @@ export async function promoteOldestWaitlisted(payload: Payload, eventId: string,
     sort: 'createdAt',
     limit: 1,
   })
-  
+
   if (waitlistedBookings.docs.length > 0) {
     const oldestWaitlisted = waitlistedBookings.docs[0]
-    
-    await payload.update({
+
+    await payloadInstance.update({
       collection: 'bookings',
       id: oldestWaitlisted.id,
       data: {
         status: 'confirmed',
       },
     })
-    
-    // Create notification for promotion
-    await createNotification(payload, {
+
+    await createNotification(payloadInstance, {
       user: oldestWaitlisted.user as string,
       booking: oldestWaitlisted.id,
       type: 'waitlist_promoted',
       tenant: tenantId,
     })
-    
-    // Create log for promotion
-    await createBookingLog(payload, {
+
+    await createBookingLog(payloadInstance, {
       booking: oldestWaitlisted.id,
       event: eventId,
       user: oldestWaitlisted.user as string,
