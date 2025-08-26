@@ -1,11 +1,15 @@
 import payload from 'payload'
 import dotenv from 'dotenv'
+import config from '../payload.config' // Import your payload config
 
 dotenv.config()
 
 async function seed() {
   try {
-    await payload.init({})
+    // Initialize payload with your config
+    await payload.init({
+      config: config
+    })
 
     console.log('🌱 Starting seed process...')
 
